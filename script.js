@@ -54,19 +54,17 @@ function fetchWithJSONP(url) {
 // 获取更多可用的代理服务器
 function getProxyServers() {
     return [
-        // 常用代理
+        // 新的可用代理
+        `https://r.jina.ai/http://`,
         `https://api.allorigins.win/raw?url=`,
         `https://corsproxy.io/?`,
-        `https://cors-anywhere.herokuapp.com/`,
-        
-        // 备用代理
         `https://thingproxy.freeboard.io/fetch/`,
         `https://jsonp.afeld.me/?url=`,
-        `https://cors-is-that-legal.herokuapp.com/`,
-        
-        // 新增代理
         `https://api.codetabs.com/v1/proxy?quest=`,
-        `https://yacdn.org/proxy/`
+        `https://yacdn.org/proxy/`,
+        `https://cors.isomorphic-git.org/`,
+        `https://proxy.cors.sh/`,
+        `https://cors-anywhere.herokuapp.com/`
     ];
 }
 
@@ -252,22 +250,38 @@ async function loadVideoQualities() {
         if (!data || data.code !== 0) {
             // 使用模拟画质数据
             console.log('使用模拟画质数据');
-            data = {
-                code: 0,
-                data: {
-                    dash: {
-                        video: [
-                            { id: 80, baseUrl: "mock://1080p" },
-                            { id: 64, baseUrl: "mock://720p" },
-                            { id: 32, baseUrl: "mock://480p" }
-                        ],
-                        audio: [
-                            { id: 1, baseUrl: "mock://audio" }
-                        ]
-                    }
-                }
-            };
-            showMessage('使用模拟画质数据演示', 'info');
+            const mockQualities = [
+                { quality: 80, desc: '高清 1080P', size: '200MB', fps: 60 },
+                { quality: 64, desc: '高清 720P', size: '100MB', fps: 30 },
+                { quality: 32, desc: '标清 480P', size: '50MB', fps: 30 },
+                { quality: 16, desc: '流畅 360P', size: '20MB', fps: 30 }
+            ];
+            
+            const qualityContainer = document.getElementById('qualityContainer');
+            if (!qualityContainer) {
+                console.error('画质容器未找到');
+                showMessage('画质选择区域未找到', 'error');
+                return;
+            }
+            
+            qualityContainer.innerHTML = mockQualities.map(q => `
+                <div class="quality-card cursor-pointer p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 transition-all duration-200 ${q.quality === 64 ? 'border-blue-500 bg-blue-50' : ''}" 
+                     onclick="selectQuality(${q.quality}, '${q.desc}', '${q.size}', ${q.fps})" 
+                     data-quality="${q.quality}">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-semibold text-gray-800">${q.desc}</div>
+                            <div class="text-sm text-gray-600">${q.size} • ${q.fps}fps</div>
+                        </div>
+                        <div class="text-2xl">
+                            ${q.quality === 80 ? '🎬' : q.quality === 64 ? '🎥' : q.quality === 32 ? '📹' : '📱'}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            selectedQuality = mockQualities[1]; // 默认选择720P
+            showMessage('使用模拟画质数据', 'info');
         }
         
         updateParseProgress(100);
@@ -448,6 +462,29 @@ async function downloadVideo() {
         showMessage('下载失败: ' + error.message, 'error');
         updateStatus('下载失败', error.message);
     }
+}
+
+// 使用代理服务器获取数据
+async function fetchWithProxy(url, proxyUrl) {
+    const response = await fetch(proxyUrl + url, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Referer': 'https://www.bilibili.com/',
+            'Origin': 'https://www.bilibili.com',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+        }
+    });
+    
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    return await response.json();
 }
 
 // 下载媒体文件
