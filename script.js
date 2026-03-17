@@ -618,23 +618,30 @@ function addToHistory(videoInfo) {
 
 // 更新历史记录显示
 function updateHistoryDisplay() {
-    const historyContainer = document.getElementById('historyContainer');
-    if (!historyContainer) return;
-    
-    if (videoHistory.length === 0) {
-        historyContainer.innerHTML = '<p class="text-gray-500 text-sm">暂无历史记录</p>';
-        return;
-    }
-    
-    historyContainer.innerHTML = videoHistory.map(item => `
-        <div class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer" onclick="loadFromHistory('${item.bvid}')">
-            <img src="${item.pic}" class="w-12 h-8 object-cover rounded mr-3" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iMzIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI0Y0RjRGNCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEwIiBmaWxsPSJncmF5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+8J+RljwvdGV4dD48L3N2Zz4='">
-            <div class="flex-1">
-                <div class="text-sm font-medium text-gray-800 truncate">${item.title}</div>
-                <div class="text-xs text-gray-500">${item.bvid}</div>
+    try {
+        const historyContainer = document.getElementById('historyContainer');
+        if (!historyContainer) {
+            console.warn('历史记录容器未找到');
+            return;
+        }
+        
+        if (videoHistory.length === 0) {
+            historyContainer.innerHTML = '<p class="text-gray-500 text-sm">暂无历史记录</p>';
+            return;
+        }
+        
+        historyContainer.innerHTML = videoHistory.map(item => `
+            <div class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer" onclick="loadFromHistory('${item.bvid}')">
+                <img src="${item.pic}" class="w-12 h-8 object-cover rounded mr-3" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iMzIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI0Y0RjRGNCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEwIiBmaWxsPSJncmF5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+8J+RljwvdGV4dD48L3N2Zz4='">
+                <div class="flex-1">
+                    <div class="text-sm font-medium text-gray-800 truncate">${item.title}</div>
+                    <div class="text-xs text-gray-500">${item.bvid}</div>
+                </div>
             </div>
-        </div>
-    `).join('');
+        `).join('');
+    } catch (error) {
+        console.error('更新历史记录显示失败:', error);
+    }
 }
 
 // 从历史记录加载
@@ -655,11 +662,26 @@ function clearHistory() {
 
 // 页面加载完成后的初始化
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('页面加载完成，开始初始化...');
+    
     // 检查关键库是否加载
     if (typeof FFmpeg === 'undefined') {
         console.warn('FFmpeg库未加载，视频合并功能将不可用');
         showMessage('FFmpeg库未加载，视频合并功能不可用', 'error');
+    } else {
+        console.log('FFmpeg库加载成功');
     }
+    
+    // 检查关键元素是否存在
+    const elements = ['videoUrl', 'historyContainer', 'videoInfo', 'progressSection'];
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            console.log(`元素 ${id} 找到`);
+        } else {
+            console.error(`元素 ${id} 未找到！`);
+        }
+    });
     
     // 添加回车键支持
     document.getElementById('videoUrl').addEventListener('keypress', function(e) {
@@ -670,4 +692,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初始化历史记录显示
     updateHistoryDisplay();
+    
+    console.log('初始化完成');
 });
