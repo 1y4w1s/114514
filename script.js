@@ -2,6 +2,7 @@
 let ffmpeg;
 let videoData = null;
 let selectedQuality = null;
+let videoHistory = JSON.parse(localStorage.getItem('videoHistory') || '[]');
 
 // 初始化FFmpeg
 async function initFFmpeg() {
@@ -48,6 +49,25 @@ function fetchWithJSONP(url) {
         
         document.body.appendChild(script);
     });
+}
+
+// 获取更多可用的代理服务器
+function getProxyServers() {
+    return [
+        // 常用代理
+        `https://api.allorigins.win/raw?url=`,
+        `https://corsproxy.io/?`,
+        `https://cors-anywhere.herokuapp.com/`,
+        
+        // 备用代理
+        `https://thingproxy.freeboard.io/fetch/`,
+        `https://jsonp.afeld.me/?url=`,
+        `https://cors-is-that-legal.herokuapp.com/`,
+        
+        // 新增代理
+        `https://api.codetabs.com/v1/proxy?quest=`,
+        `https://yacdn.org/proxy/`
+    ];
 }
 
 // 解析BV号或链接
@@ -135,7 +155,7 @@ async function parseVideo() {
                     stat: {
                         view: 99999
                     },
-                    pic: "https://via.placeholder.com/320x180/4F46E5/FFFFFF?text=Demo+Video",
+                    pic: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjE4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNEY0NkU1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxOCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5EZW1vPC90ZXh0Pjwvc3ZnPg==",
                     cid: 123456789
                 }
             };
@@ -147,6 +167,10 @@ async function parseVideo() {
         
         videoData = data.data;
         displayVideoInfo();
+        
+        // 添加到历史记录
+        addToHistory(videoData);
+        
         await loadVideoQualities();
         
         updateParseProgress(100);
@@ -177,10 +201,14 @@ function displayVideoInfo() {
     
     // 修复视频封面加载
     const coverImg = document.getElementById('videoCover');
-    coverImg.src = info.pic;
     coverImg.onerror = function() {
-        this.src = 'https://via.placeholder.com/320x180/4F46E5/FFFFFF?text=No+Cover';
+        // 防止无限循环
+        if (!this.dataset.fallback) {
+            this.dataset.fallback = 'true';
+            this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjE4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjNEY0NkU1Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxOCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBDb3ZlcjwvdGV4dD48L3N2Zz4=';
+        }
     };
+    coverImg.src = info.pic;
     
     document.getElementById('videoInfo').classList.remove('hidden');
 }
@@ -561,6 +589,70 @@ async function fetchFile(blob) {
     return new Uint8Array(arrayBuffer);
 }
 
+// 添加视频到历史记录
+function addToHistory(videoInfo) {
+    const historyItem = {
+        bvid: videoInfo.bvid,
+        title: videoInfo.title,
+        pic: videoInfo.pic,
+        timestamp: Date.now()
+    };
+    
+    // 移除重复项
+    videoHistory = videoHistory.filter(item => item.bvid !== historyItem.bvid);
+    
+    // 添加到开头
+    videoHistory.unshift(historyItem);
+    
+    // 限制历史记录数量
+    if (videoHistory.length > 10) {
+        videoHistory = videoHistory.slice(0, 10);
+    }
+    
+    // 保存到本地存储
+    localStorage.setItem('videoHistory', JSON.stringify(videoHistory));
+    
+    // 更新显示
+    updateHistoryDisplay();
+}
+
+// 更新历史记录显示
+function updateHistoryDisplay() {
+    const historyContainer = document.getElementById('historyContainer');
+    if (!historyContainer) return;
+    
+    if (videoHistory.length === 0) {
+        historyContainer.innerHTML = '<p class="text-gray-500 text-sm">暂无历史记录</p>';
+        return;
+    }
+    
+    historyContainer.innerHTML = videoHistory.map(item => `
+        <div class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer" onclick="loadFromHistory('${item.bvid}')">
+            <img src="${item.pic}" class="w-12 h-8 object-cover rounded mr-3" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iMzIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0iI0Y0RjRGNCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjEwIiBmaWxsPSJncmF5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+8J+RljwvdGV4dD48L3N2Zz4='">
+            <div class="flex-1">
+                <div class="text-sm font-medium text-gray-800 truncate">${item.title}</div>
+                <div class="text-xs text-gray-500">${item.bvid}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 从历史记录加载
+function loadFromHistory(bvid) {
+    document.getElementById('videoUrl').value = bvid;
+    parseVideo();
+}
+
+// 清空历史记录
+function clearHistory() {
+    if (confirm('确定要清空所有历史记录吗？')) {
+        videoHistory = [];
+        localStorage.removeItem('videoHistory');
+        updateHistoryDisplay();
+        showMessage('历史记录已清空', 'success');
+    }
+}
+
 // 页面加载完成后的初始化
 document.addEventListener('DOMContentLoaded', function() {
     // 检查关键库是否加载
@@ -575,4 +667,7 @@ document.addEventListener('DOMContentLoaded', function() {
             parseVideo();
         }
     });
+    
+    // 初始化历史记录显示
+    updateHistoryDisplay();
 });

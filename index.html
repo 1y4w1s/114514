@@ -44,20 +44,25 @@
                     >
                     <button 
                         onclick="parseVideo()" 
-                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition duration-200"
+                        class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center"
                     >
-                        <i class="fas fa-search mr-1"></i>解析视频
+                        <i class="fas fa-search mr-2"></i>解析视频
                     </button>
                 </div>
             </div>
-
-            <!-- 质量选择 -->
-            <div id="qualitySection" class="mb-4 hidden">
-                <label class="block text-gray-700 text-sm font-bold mb-2">
-                    <i class="fas fa-cog mr-1"></i>选择画质
-                </label>
-                <div id="qualityOptions" class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <!-- 画质选项将通过JavaScript动态生成 -->
+            
+            <!-- 历史记录 -->
+            <div class="mt-4">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-sm font-medium text-gray-700">
+                        <i class="fas fa-history mr-1"></i>历史记录
+                    </label>
+                    <button onclick="clearHistory()" class="text-xs text-red-600 hover:text-red-800">
+                        <i class="fas fa-trash mr-1"></i>清空
+                    </button>
+                </div>
+                <div id="historyContainer" class="max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                    <p class="text-gray-500 text-sm">暂无历史记录</p>
                 </div>
             </div>
         </div>
