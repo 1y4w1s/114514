@@ -27,6 +27,29 @@ async function initFFmpeg() {
     }
 }
 
+// 使用JSONP获取B站API数据
+function fetchWithJSONP(url) {
+    return new Promise((resolve, reject) => {
+        const callbackName = 'callback_' + Date.now();
+        const script = document.createElement('script');
+        
+        window[callbackName] = function(data) {
+            delete window[callbackName];
+            document.body.removeChild(script);
+            resolve(data);
+        };
+        
+        script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName;
+        script.onerror = function() {
+            delete window[callbackName];
+            document.body.removeChild(script);
+            reject(new Error('JSONP请求失败'));
+        };
+        
+        document.body.appendChild(script);
+    });
+}
+
 // 解析BV号或链接
 function extractBVId(input) {
     // 匹配BV号格式
@@ -62,22 +85,17 @@ async function parseVideo() {
         updateParseProgress(25);
         updateStatus('正在解析视频信息...', '正在获取视频基本信息...');
         
-        // 使用更简单的API调用方式
+        // 使用JSONP方式绕过CORS
         let data = null;
         
         try {
-            // 尝试直接访问（某些浏览器可能允许）
-            const response = await fetch(`https://api.bilibili.com/x/web-interface/view?bvid=${bvId}`, {
-                mode: 'cors',
-                headers: {
-                    'Origin': window.location.origin,
-                    'Referer': 'https://www.bilibili.com/'
-                }
-            });
-            data = await response.json();
-        } catch (directError) {
-            // 如果直接访问失败，尝试代理服务器
-            updateStatus('正在解析视频信息...', '直接访问失败，尝试代理服务器...');
+            updateStatus('正在解析视频信息...', '使用JSONP方式获取数据...');
+            data = await fetchWithJSONP(`https://api.bilibili.com/x/web-interface/view?bvid=${bvId}`);
+        } catch (jsonpError) {
+            console.log('JSONP失败，尝试其他方式:', jsonpError);
+            
+            // 如果JSONP失败，尝试代理服务器
+            updateStatus('正在解析视频信息...', 'JSONP失败，尝试代理服务器...');
             
             const proxyUrls = [
                 `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.bilibili.com/x/web-interface/view?bvid=${bvId}`)}`,
