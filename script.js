@@ -41,9 +41,17 @@ async function parseVideo() {
         return;
     }
 
-    showMessage('正在解析视频信息...', 'info');
+    // 显示进度条
+    document.getElementById('progressSection').classList.remove('hidden');
+    updateParseProgress(0);
+    updateDownloadProgress(0);
+    updateMergeProgress(0);
+    updateStatus('正在解析视频信息...', '正在连接B站API...');
     
     try {
+        updateParseProgress(25);
+        updateStatus('正在解析视频信息...', '正在获取视频基本信息...');
+        
         // 使用多个代理服务器尝试获取B站API数据（解决CORS问题）
         const proxyUrls = [
             `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.bilibili.com/x/web-interface/view?bvid=${bvId}`)}`,
@@ -54,9 +62,12 @@ async function parseVideo() {
         let data = null;
         let lastError = null;
         
-        for (const proxyUrl of proxyUrls) {
+        for (let i = 0; i < proxyUrls.length; i++) {
             try {
-                const response = await fetch(proxyUrl, {
+                updateParseProgress(25 + (i * 10));
+                updateStatus('正在解析视频信息...', `尝试代理服务器 ${i + 1}/3...`);
+                
+                const response = await fetch(proxyUrls[i], {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest'
                     }
@@ -75,18 +86,21 @@ async function parseVideo() {
             throw new Error(lastError?.message || '所有代理服务器都无法访问，请稍后重试');
         }
         
-        if (data.code !== 0) {
-            throw new Error(data.message || '获取视频信息失败');
-        }
-
+        updateParseProgress(75);
+        updateStatus('正在解析视频信息...', '正在处理视频数据...');
+        
         videoData = data.data;
         displayVideoInfo();
         await loadVideoQualities();
         
+        updateParseProgress(100);
         showMessage('视频解析成功！请选择画质', 'success');
+        
     } catch (error) {
         console.error('解析视频失败:', error);
         showMessage('解析视频失败: ' + error.message, 'error');
+        updateStatus('解析失败', error.message);
+        updateParseProgress(0);
     }
 }
 
@@ -109,6 +123,9 @@ async function loadVideoQualities() {
     const bvId = videoData.bvid;
     const cid = videoData.cid;
     
+    updateParseProgress(50);
+    updateStatus('正在获取可用画质...', '正在连接B站服务器...');
+    
     try {
         const proxyUrls = [
             `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.bilibili.com/x/player/playurl?bvid=${bvId}&cid=${cid}&qn=80&fnver=0&fnval=16&fourk=1`)}`,
@@ -121,6 +138,7 @@ async function loadVideoQualities() {
         
         for (const proxyUrl of proxyUrls) {
             try {
+                updateStatus('正在获取可用画质...', `尝试连接代理服务器...`);
                 const response = await fetch(proxyUrl, {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest'
@@ -140,61 +158,78 @@ async function loadVideoQualities() {
             throw new Error(lastError?.message || '所有代理服务器都无法访问，请稍后重试');
         }
         
-        if (data.code !== 0) {
-            throw new Error(data.message || '获取播放链接失败');
-        }
-
-        const qualitySelect = document.getElementById('qualitySelect');
-        qualitySelect.innerHTML = '<option value="">请选择画质</option>';
+        updateParseProgress(100);
+        
+        const qualityOptions = document.getElementById('qualityOptions');
+        qualityOptions.innerHTML = '';
         
         // 添加画质选项
         if (data.data.durl) {
             // 老版本API格式
             data.data.durl.forEach((item, index) => {
-                const option = document.createElement('option');
-                option.value = index;
-                option.textContent = `画质 ${index + 1}`;
-                qualitySelect.appendChild(option);
+                const qualityCard = createQualityCard(index, `画质 ${index + 1}`, 'standard');
+                qualityOptions.appendChild(qualityCard);
             });
         } else if (data.data.dash) {
             // DASH格式
             const qualities = [
-                { id: 120, desc: '4K' },
-                { id: 116, desc: '1080P60' },
-                { id: 112, desc: '1080P+' },
-                { id: 80, desc: '1080P' },
-                { id: 74, desc: '720P60' },
-                { id: 64, desc: '720P' },
-                { id: 32, desc: '480P' },
-                { id: 16, desc: '360P' }
+                { id: 120, desc: '4K', icon: 'fas fa-video', color: 'red' },
+                { id: 116, desc: '1080P60', icon: 'fas fa-video', color: 'orange' },
+                { id: 112, desc: '1080P+', icon: 'fas fa-video', color: 'yellow' },
+                { id: 80, desc: '1080P', icon: 'fas fa-video', color: 'green' },
+                { id: 74, desc: '720P60', icon: 'fas fa-video', color: 'blue' },
+                { id: 64, desc: '720P', icon: 'fas fa-video', color: 'indigo' },
+                { id: 32, desc: '480P', icon: 'fas fa-video', color: 'purple' },
+                { id: 16, desc: '360P', icon: 'fas fa-video', color: 'gray' }
             ];
             
             qualities.forEach(quality => {
                 if (data.data.dash.video.find(v => v.id === quality.id)) {
-                    const option = document.createElement('option');
-                    option.value = quality.id;
-                    option.textContent = quality.desc;
-                    qualitySelect.appendChild(option);
+                    const qualityCard = createQualityCard(quality.id, quality.desc, quality.color, quality.icon);
+                    qualityOptions.appendChild(qualityCard);
                 }
             });
         }
         
         document.getElementById('qualitySection').classList.remove('hidden');
-        
-        // 监听画质选择
-        qualitySelect.onchange = function() {
-            selectedQuality = this.value;
-            if (selectedQuality) {
-                document.getElementById('downloadSection').classList.remove('hidden');
-            } else {
-                document.getElementById('downloadSection').classList.add('hidden');
-            }
-        };
+        updateStatus('视频解析成功！请选择画质', '已获取到可用的画质选项');
         
     } catch (error) {
         console.error('获取画质选项失败:', error);
         showMessage('获取画质选项失败: ' + error.message, 'error');
+        updateStatus('解析失败', error.message);
     }
+}
+
+// 创建画质选项卡片
+function createQualityCard(qualityId, qualityDesc, color, icon = 'fas fa-tv') {
+    const card = document.createElement('div');
+    card.className = `quality-card cursor-pointer border-2 border-gray-200 rounded-lg p-3 text-center transition-all duration-200 hover:border-${color}-500 hover:shadow-md`;
+    card.dataset.quality = qualityId;
+    
+    card.innerHTML = `
+        <i class="${icon} text-2xl text-${color}-500 mb-1"></i>
+        <div class="text-sm font-medium text-gray-700">${qualityDesc}</div>
+    `;
+    
+    card.addEventListener('click', function() {
+        // 移除其他选中状态
+        document.querySelectorAll('.quality-card').forEach(card => {
+            card.classList.remove('border-blue-500', 'bg-blue-50', 'shadow-md');
+            card.classList.add('border-gray-200');
+        });
+        
+        // 添加选中状态
+        this.classList.remove('border-gray-200');
+        this.classList.add('border-blue-500', 'bg-blue-50', 'shadow-md');
+        
+        selectedQuality = qualityId;
+        document.getElementById('downloadSection').classList.remove('hidden');
+        
+        showMessage(`已选择${qualityDesc}`, 'success');
+    });
+    
+    return card;
 }
 
 // 下载视频
@@ -207,11 +242,19 @@ async function downloadVideo() {
     document.getElementById('progressSection').classList.remove('hidden');
     document.getElementById('downloadSection').classList.add('hidden');
     
+    // 重置进度
+    updateParseProgress(100);
+    updateDownloadProgress(0);
+    updateMergeProgress(0);
+    updateStatus('准备下载', '正在初始化下载环境...');
+    
     try {
         await initFFmpeg();
         
         const bvId = videoData.bvid;
         const cid = videoData.cid;
+        
+        updateStatus('正在获取下载链接...', '正在连接B站服务器...');
         
         // 获取视频播放链接
         const proxyUrls = [
@@ -223,9 +266,11 @@ async function downloadVideo() {
         let data = null;
         let lastError = null;
         
-        for (const proxyUrl of proxyUrls) {
+        for (let i = 0; i < proxyUrls.length; i++) {
             try {
-                const response = await fetch(proxyUrl, {
+                updateStatus('正在获取下载链接...', `尝试代理服务器 ${i + 1}/3...`);
+                
+                const response = await fetch(proxyUrls[i], {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest'
                     }
@@ -244,10 +289,8 @@ async function downloadVideo() {
             throw new Error(lastError?.message || '所有代理服务器都无法访问，请稍后重试');
         }
         
-        if (data.code !== 0) {
-            throw new Error(data.message || '获取下载链接失败');
-        }
-
+        updateStatus('获取下载链接成功', '开始下载视频流...');
+        
         let videoUrl, audioUrl;
         
         if (data.data.dash) {
@@ -263,35 +306,35 @@ async function downloadVideo() {
             audioUrl = audioStream.baseUrl;
             
             // 下载视频和音频文件
-            updateStatus('正在下载视频流...');
+            updateStatus('正在下载视频流...', `下载视频流: ${videoStream.id}...`);
             const videoBlob = await downloadMedia(videoUrl, 'video');
             updateDownloadProgress(50);
             
-            updateStatus('正在下载音频流...');
+            updateStatus('正在下载音频流...', '下载音频流...');
             const audioBlob = await downloadMedia(audioUrl, 'audio');
             updateDownloadProgress(100);
             
             // 合并视频和音频
-            updateStatus('正在合并视频和音频...');
+            updateStatus('正在合并视频和音频...', '使用FFmpeg合并音视频...');
             await mergeVideoAudio(videoBlob, audioBlob);
             
         } else if (data.data.durl) {
             // 老版本格式，视频和音频在一起
             videoUrl = data.data.durl[0].url;
             
-            updateStatus('正在下载视频...');
+            updateStatus('正在下载视频...', '下载完整视频文件...');
             const videoBlob = await downloadMedia(videoUrl, 'video');
             updateDownloadProgress(100);
             
             // 直接提供下载
             downloadBlob(videoBlob, `${videoData.title}.mp4`);
-            updateStatus('下载完成！');
+            updateStatus('下载完成！', '视频文件已开始下载');
         }
         
     } catch (error) {
         console.error('下载失败:', error);
         showMessage('下载失败: ' + error.message, 'error');
-        updateStatus('下载失败');
+        updateStatus('下载失败', error.message);
     }
 }
 
@@ -352,6 +395,12 @@ function downloadBlob(blob, filename) {
     URL.revokeObjectURL(url);
 }
 
+// 更新解析进度
+function updateParseProgress(percent) {
+    document.getElementById('parsePercent').textContent = percent + '%';
+    document.getElementById('parseProgress').style.width = percent + '%';
+}
+
 // 更新下载进度
 function updateDownloadProgress(percent) {
     document.getElementById('downloadPercent').textContent = percent + '%';
@@ -365,8 +414,21 @@ function updateMergeProgress(percent) {
 }
 
 // 更新状态文本
-function updateStatus(text) {
+function updateStatus(text, detail = '') {
     document.getElementById('statusText').textContent = text;
+    if (detail) {
+        document.getElementById('statusDetail').textContent = detail;
+    }
+    
+    // 更新状态图标
+    const statusIcon = document.getElementById('statusIcon');
+    if (text.includes('成功') || text.includes('完成')) {
+        statusIcon.innerHTML = '<i class="fas fa-check-circle text-green-500"></i>';
+    } else if (text.includes('失败') || text.includes('错误')) {
+        statusIcon.innerHTML = '<i class="fas fa-exclamation-circle text-red-500"></i>';
+    } else {
+        statusIcon.innerHTML = '<i class="fas fa-spinner fa-spin text-blue-500"></i>';
+    }
 }
 
 // 显示消息
