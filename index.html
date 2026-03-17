@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B站视频解析下载器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ffmpeg/0.12.10/ffmpeg.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- 标题 -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">
+                <i class="fas fa-play-circle text-blue-600 mr-2"></i>
+                B站视频解析下载器
+            </h1>
+            <p class="text-gray-600">输入B站视频链接或BV号，即可解析并下载MP4格式视频</p>
+            <div class="mt-2 p-2 bg-yellow-100 border border-yellow-400 rounded-lg text-sm text-yellow-800">
+                <i class="fas fa-exclamation-triangle mr-1"></i>
+                首次使用请先访问 <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank" class="underline">CORS代理服务器</a> 点击"Request temporary access to the demo server"按钮
+            </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">
+                    <i class="fas fa-link mr-1"></i>视频链接或BV号
+                </label>
+                <div class="flex gap-2">
+                    <input 
+                        type="text" 
+                        id="videoUrl" 
+                        placeholder="输入B站视频链接（如：https://www.bilibili.com/video/BV1xx411c7mD）或BV号（如：BV1xx411c7mD）"
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                    <button 
+                        onclick="parseVideo()" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition duration-200"
+                    >
+                        <i class="fas fa-search mr-1"></i>解析视频
+                    </button>
+                </div>
+            </div>
+
+            <!-- 质量选择 -->
+            <div id="qualitySection" class="mb-4 hidden">
+                <label class="block text-gray-700 text-sm font-bold mb-2">
+                    <i class="fas fa-cog mr-1"></i>选择画质
+                </label>
+                <select id="qualitySelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">请选择画质</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 视频信息显示区域 -->
+        <div id="videoInfo" class="bg-white rounded-lg shadow-lg p-6 mb-6 hidden">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-info-circle text-blue-600 mr-1"></i>视频信息
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <img id="videoCover" class="w-full rounded-lg shadow-md" alt="视频封面">
+                </div>
+                <div>
+                    <h3 id="videoTitle" class="text-lg font-semibold text-gray-800 mb-2"></h3>
+                    <p id="videoDescription" class="text-gray-600 text-sm mb-2"></p>
+                    <p id="videoDuration" class="text-gray-600 text-sm mb-2"></p>
+                    <p id="videoUploader" class="text-gray-600 text-sm mb-2"></p>
+                    <p id="videoViews" class="text-gray-600 text-sm"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 进度显示区域 -->
+        <div id="progressSection" class="bg-white rounded-lg shadow-lg p-6 mb-6 hidden">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-download text-blue-600 mr-1"></i>下载进度
+            </h2>
+            <div class="space-y-4">
+                <div>
+                    <div class="flex justify-between text-sm text-gray-600 mb-1">
+                        <span>下载进度</span>
+                        <span id="downloadPercent">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div id="downloadProgress" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-sm text-gray-600 mb-1">
+                        <span>合并进度</span>
+                        <span id="mergePercent">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div id="mergeProgress" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div id="statusText" class="text-sm text-gray-600"></div>
+            </div>
+        </div>
+
+        <!-- 下载按钮 -->
+        <div id="downloadSection" class="text-center hidden">
+            <button 
+                onclick="downloadVideo()" 
+                class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition duration-200"
+            >
+                <i class="fas fa-download mr-2"></i>下载合并后的MP4视频
+            </button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
