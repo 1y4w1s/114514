@@ -6,14 +6,24 @@ let selectedQuality = null;
 // 初始化FFmpeg
 async function initFFmpeg() {
     if (!ffmpeg) {
-        ffmpeg = new FFmpeg();
-        ffmpeg.on('log', ({ message }) => {
-            console.log(message);
-        });
-        ffmpeg.on('progress', ({ progress }) => {
-            updateMergeProgress(Math.round(progress * 100));
-        });
-        await ffmpeg.load();
+        try {
+            // 检查FFmpeg是否已加载
+            if (typeof FFmpeg === 'undefined') {
+                throw new Error('FFmpeg库未加载，请检查网络连接');
+            }
+            
+            ffmpeg = new FFmpeg();
+            ffmpeg.on('log', ({ message }) => {
+                console.log(message);
+            });
+            ffmpeg.on('progress', ({ progress }) => {
+                updateMergeProgress(Math.round(progress * 100));
+            });
+            await ffmpeg.load();
+        } catch (error) {
+            console.error('FFmpeg初始化失败:', error);
+            throw new Error('视频处理功能不可用: ' + error.message);
+        }
     }
 }
 
@@ -146,7 +156,13 @@ function displayVideoInfo() {
     document.getElementById('videoDuration').textContent = `时长: ${formatDuration(info.duration)}`;
     document.getElementById('videoUploader').textContent = `UP主: ${info.owner.name}`;
     document.getElementById('videoViews').textContent = `播放量: ${formatNumber(info.stat.view)}`;
-    document.getElementById('videoCover').src = info.pic;
+    
+    // 修复视频封面加载
+    const coverImg = document.getElementById('videoCover');
+    coverImg.src = info.pic;
+    coverImg.onerror = function() {
+        this.src = 'https://via.placeholder.com/320x180/4F46E5/FFFFFF?text=No+Cover';
+    };
     
     document.getElementById('videoInfo').classList.remove('hidden');
 }
@@ -529,6 +545,12 @@ async function fetchFile(blob) {
 
 // 页面加载完成后的初始化
 document.addEventListener('DOMContentLoaded', function() {
+    // 检查关键库是否加载
+    if (typeof FFmpeg === 'undefined') {
+        console.warn('FFmpeg库未加载，视频合并功能将不可用');
+        showMessage('FFmpeg库未加载，视频合并功能不可用', 'error');
+    }
+    
     // 添加回车键支持
     document.getElementById('videoUrl').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
