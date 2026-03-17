@@ -44,14 +44,36 @@ async function parseVideo() {
     showMessage('正在解析视频信息...', 'info');
     
     try {
-        // 使用代理服务器获取B站API数据（解决CORS问题）
-        const proxyUrl = `https://cors-anywhere.herokuapp.com/https://api.bilibili.com/x/web-interface/view?bvid=${bvId}`;
-        const response = await fetch(proxyUrl, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+        // 使用多个代理服务器尝试获取B站API数据（解决CORS问题）
+        const proxyUrls = [
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.bilibili.com/x/web-interface/view?bvid=${bvId}`)}`,
+            `https://corsproxy.io/?${encodeURIComponent(`https://api.bilibili.com/x/web-interface/view?bvid=${bvId}`)}`,
+            `https://cors-anywhere.herokuapp.com/https://api.bilibili.com/x/web-interface/view?bvid=${bvId}`
+        ];
+        
+        let data = null;
+        let lastError = null;
+        
+        for (const proxyUrl of proxyUrls) {
+            try {
+                const response = await fetch(proxyUrl, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                data = await response.json();
+                if (data && data.code === 0) {
+                    break;
+                }
+            } catch (error) {
+                lastError = error;
+                continue;
             }
-        });
-        const data = await response.json();
+        }
+        
+        if (!data || data.code !== 0) {
+            throw new Error(lastError?.message || '所有代理服务器都无法访问，请稍后重试');
+        }
         
         if (data.code !== 0) {
             throw new Error(data.message || '获取视频信息失败');
@@ -88,13 +110,35 @@ async function loadVideoQualities() {
     const cid = videoData.cid;
     
     try {
-        const proxyUrl = `https://cors-anywhere.herokuapp.com/https://api.bilibili.com/x/player/playurl?bvid=${bvId}&cid=${cid}&qn=80&fnver=0&fnval=16&fourk=1`;
-        const response = await fetch(proxyUrl, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+        const proxyUrls = [
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.bilibili.com/x/player/playurl?bvid=${bvId}&cid=${cid}&qn=80&fnver=0&fnval=16&fourk=1`)}`,
+            `https://corsproxy.io/?${encodeURIComponent(`https://api.bilibili.com/x/player/playurl?bvid=${bvId}&cid=${cid}&qn=80&fnver=0&fnval=16&fourk=1`)}`,
+            `https://cors-anywhere.herokuapp.com/https://api.bilibili.com/x/player/playurl?bvid=${bvId}&cid=${cid}&qn=80&fnver=0&fnval=16&fourk=1`
+        ];
+        
+        let data = null;
+        let lastError = null;
+        
+        for (const proxyUrl of proxyUrls) {
+            try {
+                const response = await fetch(proxyUrl, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                data = await response.json();
+                if (data && data.code === 0) {
+                    break;
+                }
+            } catch (error) {
+                lastError = error;
+                continue;
             }
-        });
-        const data = await response.json();
+        }
+        
+        if (!data || data.code !== 0) {
+            throw new Error(lastError?.message || '所有代理服务器都无法访问，请稍后重试');
+        }
         
         if (data.code !== 0) {
             throw new Error(data.message || '获取播放链接失败');
@@ -170,13 +214,35 @@ async function downloadVideo() {
         const cid = videoData.cid;
         
         // 获取视频播放链接
-        const proxyUrl = `https://cors-anywhere.herokuapp.com/https://api.bilibili.com/x/player/playurl?bvid=${bvId}&cid=${cid}&qn=${selectedQuality}&fnver=0&fnval=16&fourk=1`;
-        const response = await fetch(proxyUrl, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+        const proxyUrls = [
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.bilibili.com/x/player/playurl?bvid=${bvId}&cid=${cid}&qn=${selectedQuality}&fnver=0&fnval=16&fourk=1`)}`,
+            `https://corsproxy.io/?${encodeURIComponent(`https://api.bilibili.com/x/player/playurl?bvid=${bvId}&cid=${cid}&qn=${selectedQuality}&fnver=0&fnval=16&fourk=1`)}`,
+            `https://cors-anywhere.herokuapp.com/https://api.bilibili.com/x/player/playurl?bvid=${bvId}&cid=${cid}&qn=${selectedQuality}&fnver=0&fnval=16&fourk=1`
+        ];
+        
+        let data = null;
+        let lastError = null;
+        
+        for (const proxyUrl of proxyUrls) {
+            try {
+                const response = await fetch(proxyUrl, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                data = await response.json();
+                if (data && data.code === 0) {
+                    break;
+                }
+            } catch (error) {
+                lastError = error;
+                continue;
             }
-        });
-        const data = await response.json();
+        }
+        
+        if (!data || data.code !== 0) {
+            throw new Error(lastError?.message || '所有代理服务器都无法访问，请稍后重试');
+        }
         
         if (data.code !== 0) {
             throw new Error(data.message || '获取下载链接失败');
